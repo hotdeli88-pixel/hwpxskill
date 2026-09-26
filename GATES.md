@@ -23,4 +23,5 @@
 ## G5: Public GitHub Deployment
 - CHECK: `gh repo view hotdeli88-pixel/hwpxskill --json isPrivate,url`
 - EXPECT: `"isPrivate": false`
-- STATUS: [PENDING]
+- STATUS: [PASSED]
+
