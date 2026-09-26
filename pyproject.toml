@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hwpxskill"
+version = "1.0.0"
+description = "HWPX Document Engine & Multi-Agent Swarm Workflows for Table, Style, Font and Content Generation"
+authors = [
+    { name = "hwpxskill contributors", email = "oss@example.com" }
+]
+license = { text = "MIT License" }
+dependencies = [
+    "lxml>=5.0.0"
+]
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.scripts]
+hwpxskill = "hwpxskill.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
