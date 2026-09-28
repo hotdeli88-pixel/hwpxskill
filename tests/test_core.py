@@ -1,128 +1,112 @@
-"""Core module tests for hwpxskill."""
-from pathlib import Path
-import xml.etree.ElementTree as ET
+import io
 import zipfile
 
 import pytest
-import hwpxskill
-from hwpxskill import (
-    HwpxAnalyzer,
-    HwpxStyler,
-    HwpxEditor,
-    HwpxPackager,
-    HwpxValidator,
-)
+
+from hwpxskill.core import xmlspan
+from hwpxskill.core.package import HwpxDocument
+from hwpxskill.core.splice import Splice, apply_splices
+from hwpxskill.core.text import ParaText, inline_xml
+from hwpxskill.errors import HwpxError
+from helpers import fixture, form_doc, reopen
 
 
-def test_imports():
-    """Verify all public classes and functions are importable."""
-    assert HwpxAnalyzer is not None
-    assert HwpxStyler is not None
-    assert HwpxEditor is not None
-    assert HwpxPackager is not None
-    assert HwpxValidator is not None
+def test_xmlspan_positions_and_attrs():
+    src = '<a x="1"><b y=\'2\'>t&amp;x</b><c/></a>'
+    root = xmlspan.parse(src)
+    a = xmlspan.document_element(root)
+    b, c = a.children
+    assert a.attrs(src) == {"x": "1"}
+    assert b.get(src, "y") == "2"
+    assert b.inner(src) == "t&amp;x"
+    assert c.self_closing
+    assert xmlspan.unescape(b.inner(src)) == "t&x"
 
 
-def test_analyzer(sample_hwpx: Path):
-    """Verify HwpxAnalyzer extracts structure, tables, and placeholders."""
-    analyzer = HwpxAnalyzer(str(sample_hwpx))
-    report = analyzer.analyze()
-
-    assert report["summary"]["table_count"] == 1
-    assert report["summary"]["section_count"] == 1
-
-    # Check table structure
-    tbl = report["tables"][0]
-    assert tbl["rows"] == 3
-    assert tbl["cols"] == 2
-    assert len(tbl["cells"]) == 6
-
-    # Check placeholders (contains {{REPORT_TITLE}}, {{DATE}}, ${GOAL_DESC}, empty cell)
-    ph_tokens = [p.get("token") for p in report["placeholders"] if p.get("token")]
-    assert "{{REPORT_TITLE}}" in ph_tokens
-    assert "${GOAL_DESC}" in ph_tokens
-
-    empty_cells = [p for p in report["placeholders"] if p.get("kind") == "empty_cell"]
-    assert len(empty_cells) >= 1
+def test_xmlspan_rejects_broken_xml():
+    with pytest.raises(HwpxError):
+        xmlspan.parse("<a><b></a>")
 
 
-def test_styler_charpr_and_borderfill(sample_header_xml: bytes):
-    """Verify HwpxStyler creates new charPr and borderFill in header.xml."""
-    styler = HwpxStyler()
-
-    # Add red charPr
-    new_header, char_id = styler.add_or_update_charpr(
-        sample_header_xml,
-        font_name="나눔고딕",
-        height_pt=14.0,
-        text_color="#FF0000",
-        bold=True,
-    )
-
-    assert char_id is not None
-    assert b'textColor="#FF0000"' in new_header
-    assert b'height="1400"' in new_header
-    assert 'hangul="나눔고딕"'.encode("utf-8") in new_header
+def test_set_attr_preserves_rest_of_tag():
+    tag = '<hp:p id="0" paraPrIDRef="3" styleIDRef="0">'
+    assert xmlspan.set_attr(tag, "paraPrIDRef", "7") == '<hp:p id="0" paraPrIDRef="7" styleIDRef="0">'
+    assert xmlspan.set_attr('<x a="1"/>', "b", "2") == '<x a="1" b="2"/>'
 
 
-    # Add borderFill with background color
-    new_header_bf, bf_id = styler.add_or_update_borderfill(
-        new_header,
-        fill_color="#EBF3FB",
-        border_type="SOLID",
-        border_width="0.2 mm",
-    )
-    assert bf_id is not None
-    assert b'faceColor="#EBF3FB"' in new_header_bf
+def test_splices_apply_and_detect_overlap():
+    assert apply_splices("abcdef", [Splice(1, 3, "X"), Splice(4, 4, "Y")]) == "aXdYef"
+    with pytest.raises(HwpxError):
+        apply_splices("abcdef", [Splice(1, 4, ""), Splice(2, 5, "")])
 
 
-def test_editor_fill_and_replace(sample_hwpx: Path, tmp_path: Path):
-    """Verify HwpxEditor replaces placeholders and injects cell texts."""
-    editor = HwpxEditor()
-    out_hwpx = tmp_path / "edited.hwpx"
-
-    fills = {
-        "s0.t0.r2.c1": "1단계: 모델 설계\n2단계: 현장 적용",
-    }
-    replacements = {
-        "{{REPORT_TITLE}}": "2026 교수학습 연간 운영 계획서",
-        "{{DATE}}": "2026. 09. 26.",
-        "${GOAL_DESC}": "학생 맞춤형 개념 탐구 역량 신장",
-    }
-
-    actions = editor.fill_document(
-        src_hwpx=str(sample_hwpx),
-        dst_hwpx=str(out_hwpx),
-        fills=fills,
-        replacements=replacements,
-    )
-    assert actions >= 4
-
-    # Analyze the result
-    analyzer = HwpxAnalyzer(str(out_hwpx))
-    report = analyzer.analyze()
-    tbl = report["tables"][0]
-
-    # Verify cell text
-    cell_r2_c1 = [c for c in tbl["cells"] if c["row"] == 2 and c["col"] == 1][0]
-    assert "1단계: 모델 설계" in cell_r2_c1["text"]
-    assert "2단계: 현장 적용" in cell_r2_c1["text"]
-
-    cell_r1_c1 = [c for c in tbl["cells"] if c["row"] == 1 and c["col"] == 1][0]
-    assert "학생 맞춤형 개념 탐구" in cell_r1_c1["text"]
+def test_untouched_roundtrip_is_byte_identical():
+    data = open(fixture("gian_general.hwpx"), "rb").read()
+    assert HwpxDocument(data).to_bytes() == data
 
 
-def test_packager_golden_rule(sample_hwpx: Path, tmp_path: Path):
-    """Verify golden packaging rules (mimetype STORED first entry)."""
-    packager = HwpxPackager()
-    entries = packager.unpack(sample_hwpx)
-    assert "mimetype" in entries
+def test_edit_keeps_mimetype_first_and_other_entries_raw():
+    path = fixture("gian_simple.hwpx")
+    data = open(path, "rb").read()
+    doc = HwpxDocument(data)
+    sec = doc.section_paths[0]
+    doc.set_text(sec, doc.text(sec).replace("작성일", "작성일", 1))  # 같은 내용 → 변경 없음
+    assert doc.to_bytes() == data
+    doc.set_text(sec, doc.text(sec) + " ")
+    out = doc.to_bytes()
+    zf = zipfile.ZipFile(io.BytesIO(out))
+    first = zf.infolist()[0]
+    assert first.filename == "mimetype" and first.compress_type == zipfile.ZIP_STORED
+    orig = zipfile.ZipFile(io.BytesIO(data))
+    assert [i.filename for i in zf.infolist()] == [i.filename for i in orig.infolist()]
+    assert zf.read("Contents/header.xml") == orig.read("Contents/header.xml")
+    assert zf.testzip() is None
 
-    repacked_file = tmp_path / "repacked.hwpx"
-    packager.repack(entries, repacked_file)
 
-    with zipfile.ZipFile(repacked_file, "r") as zf:
-        first_entry = zf.infolist()[0]
-        assert first_entry.filename == "mimetype"
-        assert first_entry.compress_type == zipfile.ZIP_STORED
-        assert zf.read("mimetype") == b"application/hwp+zip"
+def test_paratext_replace_across_runs_and_linebreak():
+    src = ('<hp:p xmlns:hp="u"><hp:run charPrIDRef="1"><hp:t>이름: {{</hp:t></hp:run>'
+           '<hp:run charPrIDRef="2"><hp:t>NAME}}</hp:t></hp:run></hp:p>')
+    p = xmlspan.document_element(xmlspan.parse(src))
+    pt = ParaText(src, p)
+    assert pt.text == "이름: {{NAME}}"
+    start = pt.text.index("{{")
+    out = apply_splices(src, pt.replace(start, len(pt.text), inline_xml("홍길동 & <김>")))
+    p2 = xmlspan.document_element(xmlspan.parse(out))
+    assert ParaText(out, p2).text == "이름: 홍길동 & <김>"
+    src2 = '<hp:p xmlns:hp="u"><hp:run charPrIDRef="0"><hp:t>첫줄<hp:lineBreak/>{{D}}</hp:t></hp:run></hp:p>'
+    p = xmlspan.document_element(xmlspan.parse(src2))
+    pt = ParaText(src2, p)
+    assert pt.text == "첫줄\n{{D}}"
+    out = apply_splices(src2, pt.replace(3, 8, "2026"))
+    assert "<hp:lineBreak/>2026</hp:t>" in out
+
+
+def test_header_derive_parapr_doubles_default_branch_and_dedups():
+    doc = form_doc()
+    hs = doc.header
+    base_n = len(hs.ids("paraPr"))
+    a = hs.derive_parapr(0, left=3000, intent=-1500)
+    b = hs.derive_parapr(0, left=3000, intent=-1500)
+    assert a == b == base_n
+    xml = hs.xml("paraPr", a)
+    assert '<hc:left value="3000"' in xml and '<hc:left value="6000"' in xml
+    assert hs.parapr(a)["margin"]["left"] == 3000
+    doc2 = reopen(doc)
+    h = doc2.text(doc2.header_path)
+    assert f'<hh:paraProperties itemCnt="{base_n + 1}">' in h
+
+
+def test_derive_charpr_uses_font_ids_not_names():
+    doc = form_doc()
+    cid = doc.header.derive_charpr(0, height=1400, bold=True, face="맑은 고딕")
+    info = doc.header.charpr(cid)
+    assert info["bold"] and info["height"] == 1400 and info["font"] == "맑은 고딕"
+    xml = doc.header.xml("charPr", cid)
+    assert 'hangul="맑은 고딕"' not in xml
+    doc2 = reopen(doc)
+    assert doc2.header.charpr(cid)["font"] == "맑은 고딕"
+
+
+def test_hwp_binary_is_rejected_with_guidance():
+    with pytest.raises(HwpxError, match="convert"):
+        HwpxDocument(b"\xd0\xcf\x11\xe0" + b"\x00" * 100)
