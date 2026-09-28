@@ -4,21 +4,39 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hwpxskill"
-version = "1.0.0"
-description = "HWPX Document Engine & Multi-Agent Swarm Workflows for Table, Style, Font and Content Generation"
-authors = [
-    { name = "hwpxskill contributors", email = "oss@example.com" }
-]
-license = { text = "MIT License" }
-dependencies = [
-    "lxml>=5.0.0"
-]
+version = "2.0.0"
+description = "HWPX(한글) 양식 채우기·편집 엔진 — 원본 서식 보존, 누름틀·자리표시·명단표, 표 스타일 복제, 한글 수식, 시험지"
 readme = "README.md"
-requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "hwpxskill contributors" }]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["hwpx", "hwp", "hancom", "한글", "form", "claude", "skill"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Natural Language :: Korean",
+    "Topic :: Office/Business",
+]
+
+[project.optional-dependencies]
+windows = ["pywin32>=306; platform_system == 'Windows'"]
+dev = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/hotdeli88-pixel/hwpxskill"
 
 [project.scripts]
 hwpxskill = "hwpxskill.cli:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+package-dir = { "" = "skills/hwpxskill" }
 
+[tool.setuptools.packages.find]
+where = ["skills/hwpxskill"]
+include = ["hwpxskill*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["samples: 실제 한글 저장본 폴더(HWPXSKILL_SAMPLES)로 하는 시험"]

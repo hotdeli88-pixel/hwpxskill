@@ -1,52 +1,14 @@
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Environment
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Temp files
-*.hwpx
-*.hwpx.tmp
-*.tmp
-*.bak
-*.swp
-*~
-
-
-# Test artifacts
-.coverage
-htmlcov/
+build/
+dist/
 .pytest_cache/
-test-reports/
-test-results/
-
-# Sensitive
-.env.local
-.secret
-secrets.json
+.venv/
+venv/
+.env
+# 작업 결과물 (테스트 픽스처는 예외)
+*.hwpx
+*.hwp
+*.pdf
+!tests/fixtures/*.hwpx
