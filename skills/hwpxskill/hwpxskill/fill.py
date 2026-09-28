@@ -381,9 +381,17 @@ class _Collector:
             # 값 칸이 체크박스(□남 □여)이고 값이 선택지 중 하나면 그 칸에 체크
             vtext = lb.value_cell.text(src)
             opts = re.findall(r"□\s?([가-힣A-Za-z]+)", vtext)
-            if opts and normalize_label(value or "") in [normalize_label(o) for o in opts]:
-                self.values.take(key)
-                self._check_option(lb.value_cell, value, key)
+            if opts and len(opts) * 2 >= len(re.findall(r"[가-힣A-Za-z]+", vtext)):
+                # 선택지만 있는 칸: 고른 것에 체크 (여럿은 쉼표로), 선택지에 없는 값이면 칸을 지우지 않고 건너뜀
+                norm_opts = [normalize_label(o) for o in opts]
+                picks = [x for x in re.split(r"[,/·]", value or "") if x.strip()]
+                if picks and all(normalize_label(x) in norm_opts for x in picks):
+                    self.values.take(key)
+                    for x in picks:
+                        self._check_option(lb.value_cell, x, key)
+                else:
+                    self.report.skipped.append({"kind": "label", "key": key, "location": lb.value_cell.address,
+                                                "reason": f"선택지({' '.join('□' + o for o in opts)})에 없는 값: {value}"})
                 seen_value_cells.add(id(lb.value_cell.tc))
                 continue
             value = self.values.take(key)
@@ -428,8 +436,8 @@ class _Collector:
                         stop += 1
                     ve = stop
                 ins = " " + value
-                if ve < len(text) and not text[ve].isspace():
-                    ins = ins + "  "
+                if re.match(r"[^\s:：]{1,12}[:：]", text[ve:]):
+                    ins = ins + "  "  # 바로 뒤에 다음 라벨이 붙어 있으면 띄움 ('성명:____연락처:')
             else:
                 ins = value
             xml = _inline_with_eq(self.ctx, pt, vs, ins)
@@ -439,15 +447,30 @@ class _Collector:
 
     def patterns(self, slots) -> None:
         src = self.src
+        group_size: Dict[Tuple[int, str], int] = {}
+        for ps in slots:
+            if ps.kind == "checkbox" and ps.alt_label:
+                k = (ps.p.start, ps.alt_label)
+                group_size[k] = group_size.get(k, 0) + 1
         for ps in slots:
             if ps.kind == "checkbox":
                 key = self.values.lookup(ps.label)
-                if key is None:
+                val = (self.values.peek(key) or "").strip() if key is not None else ""
+                if key is not None and val in CHECK_TRUE:
+                    self.values.take(key)
+                elif ps.alt_label and not self.values.is_list(self.values.lookup(ps.alt_label) or ""):
+                    # 묶음 이름으로 고르기: {"성별": "남"} → '성별 □남 □여' 의 □남
+                    key = self.values.lookup(ps.alt_label)
+                    if key is None:
+                        continue
+                    gval = (self.values.peek(key) or "").strip()
+                    picks = {normalize_label(x) for x in re.split(r"[,/·]", gval) if x.strip()}
+                    single = group_size.get((ps.p.start, ps.alt_label)) == 1 and gval in CHECK_TRUE
+                    if normalize_label(ps.label) not in picks and not single:
+                        continue
+                    self.values.used[key] = self.values.used.get(key, 0) + 1
+                else:
                     continue
-                val = (self.values.peek(key) or "").strip()
-                if val not in CHECK_TRUE:
-                    continue
-                self.values.take(key)
                 pt = ParaText(src, ps.p)
                 self.add("pattern", pt.replace(ps.start, ps.end, "☑"),
                          {"kind": "checkbox", "key": key, "label": ps.label, "location": ps.location, "value": "☑"})

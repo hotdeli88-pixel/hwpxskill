@@ -114,3 +114,31 @@ def test_format_value():
     assert format_value("01012345678", "phone") == "010-1234-5678"
     assert format_value("9001011234567", "rrn:masked") == "900101-1******"
     assert format_value("abc", "upper") == "ABC"
+
+
+def test_checkbox_groups_by_group_label():
+    doc = form_doc()
+    rep = fill_document(doc, {"values": {"성별": "남, 여", "동의 여부": "예"}}).to_dict()
+    assert rep["summary"]["skipped"] == 0 and rep["unmatched_keys"] == []
+    text = outline(reopen(doc))
+    assert "성별 ☑남 ☑여, 동의 여부 ☑동의" in text and "s0.t0.r1.c3: ☑남 ☑여" in text
+
+
+def test_checkbox_value_not_in_options_keeps_cell():
+    doc = form_doc()
+    rep = fill_document(doc, {"values": {"성별": "남성"}}).to_dict()
+    assert "선택지" in rep["skipped"][0]["reason"]
+    assert "s0.t0.r1.c3: □남 □여" in outline(reopen(doc))
+
+
+def test_inline_labels_keep_checkboxes_and_suffixes():
+    from hwpxskill.skeleton import new_document, para
+    doc = new_document(para("성별: □남 □여") + para("1. 참석 여부 : □참석 □불참") + para("신청인: ______   (서명)")
+                       + para("금액: ______원") + para("성명:______연락처:______"))
+    rep = fill_document(doc, {"values": {"성별": "여", "참석 여부": "참석", "신청인": "홍길동", "금액": "1,000",
+                                         "성명": "김철수", "연락처": "02-123-4567"}}).to_dict()
+    assert rep["summary"]["skipped"] == 0 and rep["unmatched_keys"] == []
+    text = outline(reopen(doc))
+    for want in ("성별: □남 ☑여", "참석 여부 : ☑참석 □불참", "신청인: 홍길동   (서명)", "금액: 1,000원",
+                 "성명: 김철수  연락처: 02-123-4567"):
+        assert want in text, want

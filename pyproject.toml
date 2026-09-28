@@ -39,3 +39,4 @@ include = ["hwpxskill*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["samples: 실제 한글 저장본 폴더(HWPXSKILL_SAMPLES)로 하는 시험"]

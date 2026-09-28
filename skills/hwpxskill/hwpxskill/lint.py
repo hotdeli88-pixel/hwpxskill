@@ -164,7 +164,7 @@ def lint_lines(lines: List[Tuple[str, str, bool]], document: bool = False) -> Li
 
 # ── 개조식 문체 ───────────────────────────────────────────────────────────
 _DA = re.compile(r"[가-힣]다\.?$")
-_DEONTIC = re.compile(r"(?:해야|하여야|되어야|돼야|필요가 있)\s*(?:한다|함|합니다|하겠음)\.?$|할 것\.?$")
+_DEONTIC = re.compile(r"[가-힣]야\s*(?:한다|함|합니다|하겠음)\.?$|필요가\s*있(?:다|음|습니다)\.?$|할 것\.?$")
 _GEOSIDA = re.compile(r"것(?:이다|임)\.?$")
 _LEAD_END = re.compile(r"(?:하고자|하려|고자)\s*함\.?$")
 _NOT_A_BUT = re.compile(r"(?:아니라|아닌|아니고|아니며)\s*,?\s*([가-힣]{1,12})")

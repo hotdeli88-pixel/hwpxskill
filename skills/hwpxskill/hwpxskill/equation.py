@@ -1,7 +1,7 @@
 """한글 수식(hp:equation) — 스크립트 검사, 크기 추정, 삽입용 XML, 목록·교체.
 
 입력 문법은 한글 수식 편집기 스크립트만 받는다 (예: `{a+b} over {2}`, `sqrt {x}`,
-`sum from {k=1} to {n} k`). LaTeX는 변환하지 않고, 섞여 들어오면 검사기가 오류로 알린다.
+`sum _{k=1} ^{n} k`). LaTeX는 변환하지 않고, 섞여 들어오면 검사기가 오류로 알린다.
 
 크기 추정은 한컴 저장본 60개 수식의 실제 크기(hp:sz)로 맞춘 근사치다. 한글은 수식을
 열 때 다시 그리므로 몇 % 오차는 줄 배치에만 영향을 준다.
@@ -18,7 +18,9 @@ from .core import xmlspan
 # ── 한글 수식 명령어 ──────────────────────────────────────────────────
 GREEK = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa", "lambda",
          "mu", "nu", "xi", "omicron", "pi", "rho", "sigma", "tau", "upsilon", "phi", "chi", "psi", "omega"]
-GREEK_ALL = set(GREEK) | {g.upper() for g in GREEK} | {"vartheta", "varphi", "varpi", "varsigma", "varepsilon"}
+# 대문자 그리스 문자는 첫 글자만 대문자(Delta → Δ). 모두 대문자(DELTA)는 미리보기(rhwp)가 못 그린다.
+GREEK_ALL = set(GREEK) | {g.capitalize() for g in GREEK} | {g.upper() for g in GREEK} | {
+    "vartheta", "varphi", "varpi", "varsigma", "varepsilon", "varupsilon"}
 SYMBOL_WORDS = {
     "TIMES", "times", "DIV", "div", "cdot", "CDOT", "LEQ", "leq", "GEQ", "geq", "NEQ", "neq", "SIM", "APPROX",
     "SIMEQ", "CONG", "EQUIV", "PROPTO", "IN", "NOTIN", "OWNS", "SUBSET", "SUPERSET", "SUBSETEQ", "SUPSETEQ",
@@ -49,10 +51,18 @@ STRUCT_WORDS = {"over", "atop", "sqrt", "root", "of", "from", "to", "left", "rig
                 "sup", "sub", "lsup", "lsub", "SQRT", "OVER", "ROOT", "UNDEROVER", "big", "BIG", "color"}
 # 실제 한컴 문서 수식 2만여 개에서 확인한 예약어 (≤ ≥ ≠ ∠ △ ∩ ∪ | ⊥ …)
 SYMBOL_WORDS |= {"le", "ge", "ne", "angle", "triangle", "cap", "cup", "vert", "VERT", "bot", "LE", "GE"}
-BIG_OPS |= {"smallprod", "smallsum"}
+# 수식 스크립트 6.0 명령 (OWPML 부록 — rhwp symbols.rs 기준)
+SYMBOL_WORDS |= {"PLUSMINUS", "PM", "pm", "MINUSPLUS", "MP", "mp", "DIVDE", "ELL", "IMAG", "MHO", "OHM", "DOTS",
+                 "TRIANGLED", "WELL", "LLL", "GGG", "SMALLUNION", "CAP", "SQSUPSET", "SQSUPSETEQ", "NI", "WEDGE",
+                 "VEE", "HLEFT", "OSLASH", "mapsto", "hookleft", "hookright", "nwarrow", "nearrow", "swarrow",
+                 "searrow", "UPARROW", "DOWNARROW", "LBRACE", "RBRACE", "LCEIL", "RCEIL", "LFLOOR", "RFLOOR",
+                 "LANGLE", "RANGLE", "lbrace", "rbrace", "QUAD", "QQUAD"}
+BIG_OPS |= {"smallprod", "smallsum", "INTEGRAL", "SMALLINT", "SMALLOINT", "AMALG", "BIGCUP", "BIGCAP",
+            "BIGWEDGE", "BIGVEE", "DINT", "TINT", "OINT", "ODINT", "OTINT", "SMCOPROD", "COPROD"}
 DECOR |= {"BAR", "VEC", "HAT", "TILDE", "DOT", "DDOT", "UNDER", "ACUTE", "GRAVE", "CHECK", "ARCH", "DYAD"}
-STRUCT_WORDS |= {"LSUB", "LSUP", "SUP", "SUB"}
-MATRIX |= {"LADDER", "SLADDER", "LONGDIV", "PMATRIX", "BMATRIX", "DMATRIX", "MATRIX", "PILE", "LPILE", "RPILE",
+STRUCT_WORDS |= {"LSUB", "LSUP", "SUP", "SUB", "CHOOSE", "BINOM", "REL", "BUILDREL", "COLOR", "BIGG"}
+DECOR |= {"UNDERLINE", "OVERLINE", "NOT"}
+MATRIX |= {"LADDER", "SLADDER", "LONGDIV", "BENZENE", "PMATRIX", "BMATRIX", "DMATRIX", "MATRIX", "PILE", "LPILE", "RPILE",
            "EQALIGN"}
 KNOWN_WORDS = GREEK_ALL | SYMBOL_WORDS | BIG_OPS | FUNCS | DECOR | MATRIX | FONT_WORDS | STRUCT_WORDS
 _GREEK_LOWER = {g.lower() for g in GREEK_ALL}
@@ -64,10 +74,11 @@ _CI_PREFIXES = sorted(_CI_WORDS, key=len, reverse=True)
 
 _LATEX_HINT = {
     "frac": "`{a} over {b}`", "sqrt": "`sqrt {x}`", "left": "`left ( ... right )`", "right": "`left ( ... right )`",
-    "cdot": "`cdot`", "times": "`times`", "le": "`<=` 또는 `LEQ`", "leq": "`<=` 또는 `LEQ`", "ge": "`>=` 또는 `GEQ`",
-    "geq": "`>=` 또는 `GEQ`", "neq": "`!=`", "ne": "`!=`", "infty": "`inf`", "int": "`int from {a} to {b}`",
-    "sum": "`sum from {i=1} to {n}`", "begin": "`matrix{a & b # c & d}` / `cases{...}`",
-    "text": '큰따옴표 `"글자"`', "mathrm": "`rm`", "pm": "`+-`", "overline": "`bar {x}`", "vec": "`vec {x}`",
+    "cdot": "`cdot`", "times": "`times`", "le": "`le` 또는 `LEQ`", "leq": "`le` 또는 `LEQ`", "ge": "`ge` 또는 `GEQ`",
+    "geq": "`ge` 또는 `GEQ`", "neq": "`!=`", "ne": "`!=`", "infty": "`inf`", "int": "`int _{a} ^{b}`",
+    "sum": "`sum _{i=1} ^{n}`", "lim": "`lim _{x -> 0}`", "mp": "`mp`", "to": "`->`", "Delta": "`Delta`",
+    "begin": "`pmatrix{a & b # c & d}` / `cases{x & (x ge 0) # -x & (x < 0)}`",
+    "text": '큰따옴표 `"글자"`', "mathrm": "`rm`", "pm": "`pm`", "overline": "`bar {x}`", "vec": "`vec {x}`",
 }
 
 
@@ -173,8 +184,15 @@ def check_script(script: str) -> List[Finding]:
             out.append(Finding("error", f"`{t}` 뒤에는 `{{ ... }}` 가 와야 합니다"))
         if t in ("frac", "dfrac", "tfrac", "mathbf", "mathrm", "mathbb", "text", "begin", "end", "cdotp"):
             out.append(Finding("warning", f"`{t}`는 한글 수식 명령이 아닙니다 (LaTeX 습관?)"))
+    raw = tokenize(s, split=False)
+    for word, fix in _AVOID.items():
+        if word in raw:
+            out.append(Finding("warning", f"`{word}` 대신 {fix}"))
+    for t in set(raw):
+        if t.isupper() and t.lower() in _GREEK_LOWER and t.lower() in GREEK:
+            out.append(Finding("warning", f"`{t}` 대신 `{t.capitalize()}` (대문자 그리스 문자는 첫 글자만 대문자)"))
     seen = set()
-    for t in tokenize(s, split=False):
+    for t in raw:
         # 명령어 오타 (sqr, alpah, lamda …) — 한글은 모르는 낱말을 기울인 변수 글자로 그려 버린다.
         # 예약어로 시작하는 낱말(sinx, overa, rmP)은 한글이 스스로 떼어 읽으므로 오타가 아니다.
         if (len(t) >= 3 and t.isascii() and t.isalpha() and not t.isupper() and t not in seen
@@ -188,6 +206,13 @@ def check_script(script: str) -> List[Finding]:
 
 
 _CMD_WORDS = sorted(w for w in KNOWN_WORDS if len(w) >= 3)
+# 한글에서 쓸 수는 있어도 미리보기(rhwp)가 못 그리거나 실제 문서에서 쓰지 않는 꼴 → 확실한 꼴로 권함
+_AVOID = {
+    "from": "`_{…}` (예: `sum _{k=1} ^{n}`, `lim _{x -> 0}`, `int _{0} ^{1}`)",
+    "to": "`^{…}` (예: `sum _{k=1} ^{n}`)",
+    "<=": "`le` 또는 `LEQ` (≤)", ">=": "`ge` 또는 `GEQ` (≥)", "=>": "`RARROW` (⇒)", "<=>": "`LRARROW` (⇔)",
+    "<->": "`lrarrow` (↔)", "+-": "`pm` (±)", "-+": "`mp` (∓)", "sub": "`_{…}` (아래첨자)",
+}
 
 
 # ── 크기 추정 (em 단위 상자) ───────────────────────────────────────────

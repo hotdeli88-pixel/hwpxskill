@@ -68,7 +68,11 @@ def analyze(doc, outline: bool = False, max_outline: int = 400) -> Dict:
                             "current": il.current[:40]})
         for pt in scan.patterns:
             item = {"label": pt.label, "location": pt.location, "context": pt.text[:60]}
-            (checks if pt.kind == "checkbox" else parens).append(item)
+            if pt.kind == "checkbox":
+                item["group"] = pt.alt_label
+                checks.append(item)
+            else:
+                parens.append(item)
         empty_cells.extend(scan.empty_cells)
         examples.extend(scan.example_cells)
         for t in sec.tables():
@@ -154,7 +158,9 @@ def format_text(report: Dict) -> str:
     if report["checkboxes"] or report["paren_blanks"]:
         L.append("\n[체크박스·괄호 빈칸]")
         for c in report["checkboxes"]:
-            L.append(f"  □{c['label']} @ {c['location']}")
+            grp = f"  (묶음 '{c['group']}': {{\"{c['group']}\": \"{c['label']}\"}} 또는 {{\"{c['label']}\": \"☑\"}})" \
+                if c.get("group") else f"  ({{\"{c['label']}\": \"☑\"}})"
+            L.append(f"  □{c['label']} @ {c['location']}{grp}")
         for c in report["paren_blanks"]:
             L.append(f"  {c['label']}(  ) @ {c['location']}")
     if report["example_cells"]:

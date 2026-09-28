@@ -110,3 +110,13 @@ def test_derive_charpr_uses_font_ids_not_names():
 def test_hwp_binary_is_rejected_with_guidance():
     with pytest.raises(HwpxError, match="convert"):
         HwpxDocument(b"\xd0\xcf\x11\xe0" + b"\x00" * 100)
+
+
+def test_encrypted_hwpx_is_rejected_with_guidance():
+    import io, zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr(zipfile.ZipInfo("mimetype"), "application/hwp+zip")
+        z.writestr("META-INF/manifest.xml", '<odf:manifest><odf:file-entry><odf:encryption-data/></odf:file-entry></odf:manifest>')
+    with pytest.raises(HwpxError, match="암호"):
+        HwpxDocument(buf.getvalue())

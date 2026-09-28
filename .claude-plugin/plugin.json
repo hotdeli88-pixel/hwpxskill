@@ -1,0 +1,10 @@
+{
+  "name": "hwpxskill",
+  "version": "2.0.0",
+  "description": "한글(HWP·HWPX) 양식을 원본 서식 그대로 채우고 편집하는 스킬 — 누름틀·표·명단표·체크박스, 예시 서식 따라 쓰기, 표 스타일 복제, 한글 수식, 2단 시험지, 공문서 표기법·개인정보 검사, PDF 검수",
+  "author": { "name": "hotdeli88-pixel" },
+  "homepage": "https://github.com/hotdeli88-pixel/hwpxskill",
+  "repository": "https://github.com/hotdeli88-pixel/hwpxskill",
+  "license": "MIT",
+  "keywords": ["hwp", "hwpx", "hancom", "한글", "공문서", "양식", "시험지", "수식"]
+}

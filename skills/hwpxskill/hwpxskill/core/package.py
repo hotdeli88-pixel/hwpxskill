@@ -27,7 +27,7 @@ class HwpxDocument:
     def __init__(self, data: bytes, path: Optional[str] = None):
         self.path = path
         if data[:4] == b"\xd0\xcf\x11\xe0":
-            raise HwpxError("HWP(바이너리) 파일입니다. 먼저 `convert`로 HWPX로 바꿔 주세요")
+            raise HwpxError("HWP(바이너리) 파일입니다. `convert`로 HWPX로 바꾸거나 명령에 .hwp를 그대로 주면 자동으로 바꿉니다")
         self.archive = ZipArchive.from_bytes(data)
         names = self.archive.names()
         if "mimetype" not in names:
@@ -35,6 +35,8 @@ class HwpxDocument:
         mt = self.archive.read("mimetype").decode("ascii", "replace").strip()
         if mt != MIMETYPE:
             raise HwpxError(f"HWPX 파일이 아닙니다 (mimetype={mt!r})")
+        if "META-INF/manifest.xml" in names and b"encryption-data" in self.archive.read("META-INF/manifest.xml"):
+            raise HwpxError("암호가 걸린 HWPX입니다. 한글에서 문서 암호를 풀고 다시 저장한 뒤 사용해 주세요")
         self._text: Dict[str, str] = {}
         self._tree: Dict[str, xmlspan.Node] = {}
         self._dirty: Set[str] = set()
@@ -51,7 +53,7 @@ class HwpxDocument:
         if not os.path.exists(path):
             raise HwpxError(f"파일이 없습니다: {path}")
         if path.lower().endswith(".hwp") and not path.lower().endswith(".hwpx"):
-            raise HwpxError("HWP(바이너리) 파일입니다. 먼저 `convert`로 HWPX로 바꿔 주세요")
+            raise HwpxError("HWP(바이너리) 파일입니다. `convert`로 HWPX로 바꾸거나 명령에 .hwp를 그대로 주면 자동으로 바꿉니다")
         with open(path, "rb") as f:
             data = f.read()
         return cls(data, path)

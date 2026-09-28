@@ -358,6 +358,8 @@ def scan_inlines(sec: Section) -> List[InlineSlot]:
             if "{{" in cur or "${" in cur or head.rstrip().endswith("(" + seg["label"]) or \
                     re.search(r"\(\s*" + re.escape(seg["label"]) + r"\s*$", head):
                 continue
+            if re.search(r"[□☑■]", cur):
+                continue  # '성별: □남 □여' — 선택지 칸은 체크박스로 채운다 (글로 덮어쓰지 않음)
             out.append(InlineSlot(seg["label"], seg.get("ext"), sec.index, p, seg["vs"], seg["ve"],
                                   seg.get("ext_start"), sec.paragraph_address(p), text[seg["vs"]:seg["ve"]]))
     return out
@@ -386,6 +388,10 @@ def scan_inline_segments(text: str) -> List[Dict]:
             ve = vs + 100
         while ve > vs and text[ve - 1].isspace():
             ve -= 1
+        blank = re.match(r"[_＿\s]*[_＿][_＿\s]*", text[vs:ve])
+        if blank and blank.end() < ve - vs:
+            # '______ (서명)', '______원' — 밑줄 빈칸만 값 자리, 뒤 글자는 남긴다
+            ve = vs + len(blank.group(0).rstrip())
         segs.append({"label": cur["label"], "ext": cur["ext"], "ext_start": cur["ext_start"], "vs": vs, "ve": ve})
     return segs
 
@@ -393,6 +399,14 @@ def scan_inline_segments(text: str) -> List[Dict]:
 _CHECK_RE = re.compile(r"□(\s?)([가-힣A-Za-z]+)")
 _PAREN_RE = re.compile(r"([가-힣A-Za-z]+)\(\s+\)([가-힣A-Za-z]*)")
 _ANNOT_RE = re.compile(r"\(([가-힣A-Za-z]+)[:：]\s+\)")
+
+
+def _group_label(before: str) -> Optional[str]:
+    """체크박스 묶음 앞 글에서 묶음 이름: '1. 신청 구분: ' → '신청 구분'."""
+    t = re.split(r"[,，;)\]]", before.strip())[-1].strip()
+    t = re.sub(r"^(?:\d+[.)]|[가-하][.)]|[□○◦∙·※\-])\s*", "", t)
+    t = t.strip(" :：")
+    return t if 1 <= len(t) <= 20 and re.search(r"[가-힣A-Za-z]", t) else None
 
 
 def scan_patterns(sec: Section) -> List[PatternSlot]:
@@ -405,11 +419,18 @@ def scan_patterns(sec: Section) -> List[PatternSlot]:
             continue
         loc = sec.paragraph_address(p)
         boxes = list(_CHECK_RE.finditer(text))
+        group = None
+        prev_end = 0
         for m in boxes:
             # '□ 추진 배경' 같은 항목부호는 체크박스가 아니다: 붙여 쓴 □남, 또는 한 줄에 여러 개인 짧은 선택지만
             if m.group(1) and not (len(boxes) >= 2 and len(m.group(2)) <= 4):
+                prev_end = m.end()
                 continue
-            out.append(PatternSlot("checkbox", m.group(2), None, sec.index, p, m.start(), m.start() + 1, loc, text))
+            between = text[prev_end:m.start()]
+            if prev_end == 0 or re.search(r"[^\s,/·]", between):
+                group = _group_label(between)  # 새 묶음: 앞 글이 묶음 이름 (예: '성별 □남 □여')
+            out.append(PatternSlot("checkbox", m.group(2), group, sec.index, p, m.start(), m.start() + 1, loc, text))
+            prev_end = m.end()
         for m in _PAREN_RE.finditer(text):
             inner_s = text.index("(", m.start()) + 1
             inner_e = text.index(")", inner_s)

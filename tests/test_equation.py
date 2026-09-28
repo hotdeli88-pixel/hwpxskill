@@ -19,8 +19,8 @@ def warnings(script):
 
 
 @pytest.mark.parametrize("script", [
-    "{a+b} over {2}", "sqrt {x^2 + 1}", "root {3} of {8}", "3 root5", "sum from {k=1} to {n} k^2",
-    "int _{0} ^{1} x dx", "lim from {x -> 0} {sin x} over {x}", "left ( {1} over {2} right ) ^{2}",
+    "{a+b} over {2}", "sqrt {x^2 + 1}", "root {3} of {8}", "3 root5", "sum _{k=1} ^{n} k^2",
+    "int _{0} ^{1} x dx", "lim _{x -> 0} {sin x} over {x}", "left ( {1} over {2} right ) ^{2}",
     "int_0^2 { left{ x right} dx }", "matrix{a & b # c & d}", "x^2 overa ^2 + y^2 overb ^2 =1",
     "rmP(itA cup B) = 13 over20", "BARX -1.96 TIMES sigma", "tantheta", "-3 le x < -1", "alpha != beta",
 ])
@@ -35,6 +35,13 @@ def test_valid_hancom_scripts_have_no_errors(script):
 ])
 def test_script_errors(script, needle):
     assert any(needle in m for m in errors(script)), check_script(script)
+
+
+@pytest.mark.parametrize("script,needle", [
+    ("sum from {k=1} to {n} k", "sum _{k=1} ^{n}"), ("x <= y", "`le`"), ("a +- b", "`pm`"), ("DELTA x", "`Delta`"),
+])
+def test_forms_the_preview_cannot_draw_get_a_better_suggestion(script, needle):
+    assert errors(script) == [] and any(needle in m for m in warnings(script))
 
 
 def test_typo_warning_but_not_for_glued_commands():
