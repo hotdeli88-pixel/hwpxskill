@@ -26,7 +26,7 @@ from .core import xmlspan
 from .core.model import Section, parse_address
 from .core.splice import Splice
 from .core.text import ParaText, inline_xml
-from .equation import check_script, has_eq_markup, replace_equation, split_eq_markup
+from .equation import check_script, has_eq_markup, replace_equation, resolve_equation, split_eq_markup
 from .errors import HwpxError
 from .forms import (CHECK_TRUE, FieldSlot, PlaceholderSlot, detect_header_row, find_matching_key,
                     normalize_label, scan_document)
@@ -637,7 +637,7 @@ def fill_document(doc, data: Dict[str, Any]) -> FillReport:
             report.warnings.append("여러 곳에 들어간 키(require_unique): " + ", ".join(dup))
     for idx, script in eq_in.items():
         try:
-            res = replace_equation(doc, int(idx), str(script))
+            res = replace_equation(doc, resolve_equation(doc, idx), str(script))
             report.equations.append(res)
         except HwpxError as e:
             report.warnings.append(f"수식 {idx}: {e}")

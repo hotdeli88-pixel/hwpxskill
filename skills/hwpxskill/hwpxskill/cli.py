@@ -37,7 +37,8 @@ def _dump(obj: Any) -> None:
 
 def _open(path: str):
     from .core.package import HwpxDocument
-    return HwpxDocument.open(path)
+    from .render import ensure_hwpx
+    return HwpxDocument.open(ensure_hwpx(path))
 
 
 def _default_out(src: str, suffix: str) -> str:
@@ -139,8 +140,11 @@ def cmd_equation(a) -> int:
                 bad = bad or f.severity == "error"
         return 1 if bad else 0
     if a.eq_cmd == "set":
+        from .equation import resolve_equation
         doc = _open(a.file)
-        res = replace_equation(doc, a.index, a.script)
+        if (a.index is None) == (a.find is None):
+            raise HwpxError("--index 와 --find 중 하나만 지정하세요")
+        res = replace_equation(doc, a.index if a.index is not None else resolve_equation(doc, a.find), a.script)
         out = doc.save(a.output or _default_out(a.file, "수식수정"))
         print(f"수식 {res['index']}: {res['old']} → {res['new']}\n저장: {out}")
         return 0
@@ -166,7 +170,11 @@ def cmd_table_style(a) -> int:
 def cmd_exam(a) -> int:
     from .exam import build_exam
     data = _load_json(a.data)
-    out, rep = build_exam(data, template=a.template, output=a.output)
+    template = None
+    if a.template:
+        from .render import ensure_hwpx
+        template = ensure_hwpx(a.template)
+    out, rep = build_exam(data, template=template, output=a.output)
     if a.json:
         _dump({**rep, "output": out})
     else:
@@ -182,7 +190,7 @@ def cmd_exam(a) -> int:
 
 def cmd_lint(a) -> int:
     from .lint import lint_document, lint_text, format_findings
-    if a.file and (a.file.lower().endswith(".hwpx")):
+    if a.file and a.file.lower().endswith((".hwpx", ".hwp")):
         findings = lint_document(_open(a.file), munche=a.munche)
     else:
         if a.file and a.file != "-":
@@ -317,6 +325,8 @@ def cmd_doctor(a) -> int:
         print(f"  한글(Windows 자동화): {'사용 가능' if info['hancom'] else '없음'} {info.get('hancom_note', '')}")
         print(f"  rhwp: {info['rhwp'] or '없음'}")
         print(f"  PDF 렌더 가능: {'예 (' + info['render_engine'] + ')' if info['render_engine'] else '아니요 — references/setup.md 참고'}")
+        if info.get("equation_font"):
+            print(f"  rhwp 수식 글꼴: {info['equation_font']}")
     return 0
 
 
@@ -352,16 +362,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("equation", help="수식 목록·검사·수정 (한글 수식 스크립트)")
     esub = s.add_subparsers(dest="eq_cmd", required=True)
-    e = esub.add_parser("list")
+    e = esub.add_parser("list", help="문서의 수식을 번호·위치·스크립트로 보기")
     e.add_argument("file")
     e.add_argument("--json", action="store_true")
-    e = esub.add_parser("check", help="스크립트 문법 검사")
+    e = esub.add_parser("check", help="스크립트 문법 검사 (저장 전에)")
     e.add_argument("scripts", nargs="+")
-    e.add_argument("--pt", type=float, default=10.0)
-    e = esub.add_parser("set", help="index번째 수식 바꾸기")
+    e.add_argument("--pt", type=float, default=10.0, help="크기 추정용 글자 크기")
+    e = esub.add_parser("set", help="수식 바꾸기 (번호 또는 스크립트 일부로 찾기)")
     e.add_argument("file")
-    e.add_argument("--index", type=int, required=True)
-    e.add_argument("--script", required=True)
+    e.add_argument("--index", type=int, help="equation list 의 번호")
+    e.add_argument("--find", help="바꿀 수식의 스크립트 (일부만 적어도 됨, 띄어쓰기 무시)")
+    e.add_argument("--script", required=True, help="새 한글 수식 스크립트")
     e.add_argument("-o", "--output")
     s.set_defaults(func=cmd_equation)
 

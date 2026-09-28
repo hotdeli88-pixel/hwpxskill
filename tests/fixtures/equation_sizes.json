@@ -1,0 +1,482 @@
+[
+{
+"file": "eq-002.hwpx",
+"script": "sqrt {3} ` ^{f(n)}",
+"baseUnit": 900,
+"width": 2824,
+"height": 1050,
+"baseLine": 88
+},
+{
+"file": "eq-002.hwpx",
+"script": "root {4} of {sqrt {3} ` ^{f(n)}}",
+"baseUnit": 900,
+"width": 3877,
+"height": 1179,
+"baseLine": 90
+},
+{
+"file": "eq-002.hwpx",
+"script": "- root {4} of {sqrt {3} ` ^{f(n)}}",
+"baseUnit": 900,
+"width": 4678,
+"height": 1185,
+"baseLine": 89
+},
+{
+"file": "eq-002.hwpx",
+"script": "root {4} of {sqrt {3} ` ^{f(n)}} ` TIMES  LEFT ( - root {4} of {sqrt {3} ` ^{f(n)}} RIGHT )",
+"baseUnit": 900,
+"width": 10419,
+"height": 1185,
+"baseLine": 89
+},
+{
+"file": "eq-002.hwpx",
+"script": "=- sqrt {3} ` ^{{1} over {4} f(n)} TIMES  sqrt {3} ` ^{{1} over {4} f(n)}",
+"baseUnit": 900,
+"width": 9404,
+"height": 1834,
+"baseLine": 93
+},
+{
+"file": "eq-002.hwpx",
+"script": "=-3` ^{{1} over {8} f(n)} TIMES  3` ^{{1} over {8} f(n)}",
+"baseUnit": 900,
+"width": 7298,
+"height": 1834,
+"baseLine": 93
+},
+{
+"file": "eq-002.hwpx",
+"script": "=-3` ^{{1} over {8} f(n)+} ` ^{{1} over {8} f(n)}",
+"baseUnit": 900,
+"width": 6326,
+"height": 1834,
+"baseLine": 93
+},
+{
+"file": "eq-002.hwpx",
+"script": "=-3` ^{{1} over {4} f(n)}",
+"baseUnit": 900,
+"width": 3859,
+"height": 1834,
+"baseLine": 93
+},
+{
+"file": "eq-002.hwpx",
+"script": "=-9",
+"baseUnit": 900,
+"width": 1926,
+"height": 900,
+"baseLine": 86
+},
+{
+"file": "eq-002.hwpx",
+"script": "3` ^{{1} over {4} f(n)}",
+"baseUnit": 900,
+"width": 2383,
+"height": 1834,
+"baseLine": 93
+},
+{
+"file": "eq-002.hwpx",
+"script": "=3 ^{2}",
+"baseUnit": 900,
+"width": 1614,
+"height": 1050,
+"baseLine": 88
+},
+{
+"file": "eq-002.hwpx",
+"script": "{1} over {4} f(n)",
+"baseUnit": 900,
+"width": 2751,
+"height": 2070,
+"baseLine": 66
+},
+{
+"file": "eq-002.hwpx",
+"script": "=2",
+"baseUnit": 900,
+"width": 1314,
+"height": 900,
+"baseLine": 86
+},
+{
+"file": "eq-002.hwpx",
+"script": "f(n)",
+"baseUnit": 900,
+"width": 1851,
+"height": 900,
+"baseLine": 86
+},
+{
+"file": "eq-002.hwpx",
+"script": "=8",
+"baseUnit": 900,
+"width": 1314,
+"height": 900,
+"baseLine": 86
+},
+{
+"file": "eq-002.hwpx",
+"script": "cdots cdots",
+"baseUnit": 900,
+"width": 1800,
+"height": 900,
+"baseLine": 86
+},
+{
+"file": "math-001.hwpx",
+"script": " sqrt {3} of {5}  times 25^{{1} over {3}}`",
+"baseUnit": 1100,
+"width": 4677,
+"height": 2287,
+"baseLine": 93
+},
+{
+"file": "math-001.hwpx",
+"script": "{a_{4}} over {a_{2}}+{a_{2}} over {a_{1}}=30",
+"baseUnit": 1100,
+"width": 5985,
+"height": 3030,
+"baseLine": 63
+},
+{
+"file": "math-001.hwpx",
+"script": "k`",
+"baseUnit": 1100,
+"width": 662,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": " left {a_{n}  right }`",
+"baseUnit": 1100,
+"width": 2162,
+"height": 1350,
+"baseLine": 71
+},
+{
+"file": "math-001.hwpx",
+"script": "k`",
+"baseUnit": 1100,
+"width": 662,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "1",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "2",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "3",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "4",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "5",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "f left(x  right)=x^{3}-8 x+7`",
+"baseUnit": 1100,
+"width": 8100,
+"height": 1313,
+"baseLine": 87
+},
+{
+"file": "math-001.hwpx",
+"script": " lim _{h ``rarrow`` 0} {f left(2+h  right)-f left(2  right)} over {h}`",
+"baseUnit": 1100,
+"width": 9096,
+"height": 2715,
+"baseLine": 62
+},
+{
+"file": "math-001.hwpx",
+"script": "f LEFT ( x RIGHT ) = {cases{eqalign{``5x+a#\r\n}&&eqalign{~ LEFT ( x<`-2 RIGHT )#\r\n}#``x ^{2} -a&&~ LEFT ( x GEQ `-2 RIGHT )}}",
+"baseUnit": 1100,
+"width": 12785,
+"height": 3703,
+"baseLine": 61
+},
+{
+"file": "math-001.hwpx",
+"script": "a`",
+"baseUnit": 1100,
+"width": 662,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "6",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "7",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "8",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "9",
+"baseUnit": 1100,
+"width": 525,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "10",
+"baseUnit": 1100,
+"width": 1050,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm ABC`",
+"baseUnit": 1100,
+"width": 2312,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm AB`",
+"baseUnit": 1100,
+"width": 1637,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "{bar{rm AD it}} `:` {bar{rm DB it}} =3 `:` 2`",
+"baseUnit": 1100,
+"width": 7525,
+"height": 1350,
+"baseLine": 87
+},
+{
+"file": "math-001.hwpx",
+"script": "rm D`",
+"baseUnit": 1100,
+"width": 887,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm A`",
+"baseUnit": 1100,
+"width": 962,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm D`",
+"baseUnit": 1100,
+"width": 887,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "O`",
+"baseUnit": 1100,
+"width": 962,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "O``",
+"baseUnit": 1100,
+"width": 1099,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm AC`",
+"baseUnit": 1100,
+"width": 1637,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm E`",
+"baseUnit": 1100,
+"width": 812,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": " sin `A``:`  sin `C`=8`:` 5`",
+"baseUnit": 1100,
+"width": 9519,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm ADE`",
+"baseUnit": 1100,
+"width": 2387,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm ABC`",
+"baseUnit": 1100,
+"width": 2312,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "9`:` 35`",
+"baseUnit": 1100,
+"width": 2748,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm ABC`",
+"baseUnit": 1100,
+"width": 2312,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "7`",
+"baseUnit": 1100,
+"width": 662,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "O`",
+"baseUnit": 1100,
+"width": 962,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm P`",
+"baseUnit": 1100,
+"width": 812,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": "rm PBC`",
+"baseUnit": 1100,
+"width": 2162,
+"height": 1125,
+"baseLine": 85
+},
+{
+"file": "math-001.hwpx",
+"script": " bar {{rm{AB}} it }< bar {{rm{AC}} it }`",
+"baseUnit": 1100,
+"width": 4478,
+"height": 1350,
+"baseLine": 87
+},
+{
+"file": "math-001.hwpx",
+"script": "18+15  sqrt{3}",
+"baseUnit": 1100,
+"width": 4995,
+"height": 1290,
+"baseLine": 87
+},
+{
+"file": "math-001.hwpx",
+"script": "24+20  sqrt{3}",
+"baseUnit": 1100,
+"width": 4995,
+"height": 1290,
+"baseLine": 87
+},
+{
+"file": "math-001.hwpx",
+"script": "30+25  sqrt{3}",
+"baseUnit": 1100,
+"width": 4995,
+"height": 1290,
+"baseLine": 87
+},
+{
+"file": "math-001.hwpx",
+"script": "36+30  sqrt{3}",
+"baseUnit": 1100,
+"width": 4995,
+"height": 1290,
+"baseLine": 87
+},
+{
+"file": "math-001.hwpx",
+"script": "42+35  sqrt{3}",
+"baseUnit": 1100,
+"width": 4995,
+"height": 1290,
+"baseLine": 87
+}
+]

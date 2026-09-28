@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import difflib
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -46,7 +47,20 @@ MATRIX = {"matrix", "pmatrix", "bmatrix", "dmatrix", "cases", "eqalign", "pile",
 FONT_WORDS = {"rm", "it", "bold", "RM", "IT", "BOLD"}
 STRUCT_WORDS = {"over", "atop", "sqrt", "root", "of", "from", "to", "left", "right", "LEFT", "RIGHT",
                 "sup", "sub", "lsup", "lsub", "SQRT", "OVER", "ROOT", "UNDEROVER", "big", "BIG", "color"}
+# 실제 한컴 문서 수식 2만여 개에서 확인한 예약어 (≤ ≥ ≠ ∠ △ ∩ ∪ | ⊥ …)
+SYMBOL_WORDS |= {"le", "ge", "ne", "angle", "triangle", "cap", "cup", "vert", "VERT", "bot", "LE", "GE"}
+BIG_OPS |= {"smallprod", "smallsum"}
+DECOR |= {"BAR", "VEC", "HAT", "TILDE", "DOT", "DDOT", "UNDER", "ACUTE", "GRAVE", "CHECK", "ARCH", "DYAD"}
+STRUCT_WORDS |= {"LSUB", "LSUP", "SUP", "SUB"}
+MATRIX |= {"LADDER", "SLADDER", "LONGDIV", "PMATRIX", "BMATRIX", "DMATRIX", "MATRIX", "PILE", "LPILE", "RPILE",
+           "EQALIGN"}
 KNOWN_WORDS = GREEK_ALL | SYMBOL_WORDS | BIG_OPS | FUNCS | DECOR | MATRIX | FONT_WORDS | STRUCT_WORDS
+_GREEK_LOWER = {g.lower() for g in GREEK_ALL}
+# 대소문자를 가리지 않는 예약어 (그리스 문자는 대소문자로 뜻이 달라 제외)
+_CI_WORDS = {w.lower(): w for w in sorted(KNOWN_WORDS) if w.lower() not in _GREEK_LOWER and len(w) >= 3}
+_CI_WORDS.update({"rm": "rm", "it": "it"})
+_PREFIXES = sorted({w for w in KNOWN_WORDS if len(w) >= 2}, key=len, reverse=True)
+_CI_PREFIXES = sorted(_CI_WORDS, key=len, reverse=True)
 
 _LATEX_HINT = {
     "frac": "`{a} over {b}`", "sqrt": "`sqrt {x}`", "left": "`left ( ... right )`", "right": "`left ( ... right )`",
@@ -75,8 +89,45 @@ _TOKEN_RE = re.compile(
 )
 
 
-def tokenize(script: str) -> List[str]:
-    return _TOKEN_RE.findall(script.replace("\r", " ").replace("\n", " "))
+def _reserved_prefix(w: str) -> Optional[Tuple[str, int]]:
+    for k in _PREFIXES:
+        if w.startswith(k):
+            return k, len(k)
+    lw = w.lower()
+    for k in _CI_PREFIXES:
+        if lw.startswith(k):
+            return _CI_WORDS[k], len(k)
+    return None
+
+
+def split_word(w: str) -> List[str]:
+    """붙여 쓴 낱말을 한글 수식처럼 가른다: 앞에서부터 가장 긴 예약어를 떼고, 예약어로 시작하지
+    않는 나머지는 변수 글자로 둔다. (`overa`→over a, `rmAB`→rm AB, `tantheta`→tan theta, `BARX`→BAR X)"""
+    out: List[str] = []
+    while w:
+        if w in KNOWN_WORDS:
+            out.append(w)
+            break
+        hit = _reserved_prefix(w)
+        if hit is None:
+            out.append(w)
+            break
+        out.append(hit[0])
+        w = w[hit[1]:]
+    return out
+
+
+def tokenize(script: str, split: bool = True) -> List[str]:
+    toks = _TOKEN_RE.findall(script.replace("\r", " ").replace("\n", " "))
+    if not split:
+        return toks
+    out: List[str] = []
+    for t in toks:
+        if t[0].isalpha() and t.isascii():
+            out.extend(split_word(t))
+        else:
+            out.append(t)
+    return out
 
 
 # ── 검사 ──────────────────────────────────────────────────────────────
@@ -87,7 +138,9 @@ def check_script(script: str) -> List[Finding]:
         return [Finding("error", "수식 스크립트가 비어 있습니다")]
     toks = tokenize(s)
     depth = 0
-    for t in toks:
+    for i, t in enumerate(toks):
+        if i and toks[i - 1] in ("left", "LEFT", "right", "RIGHT"):
+            continue  # left{ … right} 의 괄호는 묶음이 아니라 글자
         if t == "{":
             depth += 1
         elif t == "}":
@@ -116,13 +169,25 @@ def check_script(script: str) -> List[Finding]:
                 out.append(Finding("error", f"`{t}` 앞에 분자가 없습니다 (예: `{{a}} over {{b}}`)"))
             if i == len(toks) - 1 or toks[i + 1] in ("}", "&", "#"):
                 out.append(Finding("error", f"`{t}` 뒤에 분모가 없습니다"))
-        if t in ("root", "ROOT") and "of" not in toks[i + 1:i + 40]:
-            out.append(Finding("error", "`root`는 `root {n} of {x}` 꼴로 씁니다 (제곱근은 `sqrt {x}`)"))
         if t in MATRIX and (i + 1 >= len(toks) or toks[i + 1] != "{"):
             out.append(Finding("error", f"`{t}` 뒤에는 `{{ ... }}` 가 와야 합니다"))
         if t in ("frac", "dfrac", "tfrac", "mathbf", "mathrm", "mathbb", "text", "begin", "end", "cdotp"):
             out.append(Finding("warning", f"`{t}`는 한글 수식 명령이 아닙니다 (LaTeX 습관?)"))
+    seen = set()
+    for t in tokenize(s, split=False):
+        # 명령어 오타 (sqr, alpah, lamda …) — 한글은 모르는 낱말을 기울인 변수 글자로 그려 버린다.
+        # 예약어로 시작하는 낱말(sinx, overa, rmP)은 한글이 스스로 떼어 읽으므로 오타가 아니다.
+        if (len(t) >= 3 and t.isascii() and t.isalpha() and not t.isupper() and t not in seen
+                and t not in KNOWN_WORDS and _reserved_prefix(t) is None):
+            seen.add(t)
+            near = difflib.get_close_matches(t, _CMD_WORDS, n=1, cutoff=0.8)
+            if near:
+                out.append(Finding("warning", f"`{t}`는 수식 명령이 아닙니다 — `{near[0]}`을(를) 뜻했다면 고치세요 "
+                                              f"(변수 이름이면 무시)"))
     return out
+
+
+_CMD_WORDS = sorted(w for w in KNOWN_WORDS if len(w) >= 3)
 
 
 # ── 크기 추정 (em 단위 상자) ───────────────────────────────────────────
@@ -230,8 +295,10 @@ class _Parser:
             idx = self.group_or_atom()
             if self.peek() == "of":
                 self.take()
-            rad = self.group_or_atom()
-            b = Box(idx.w * 0.6 + rad.w + 0.8, max(rad.asc + 0.17, idx.h * 0.6 + 0.4), rad.desc)
+                rad = self.group_or_atom()
+                b = Box(idx.w * 0.6 + rad.w + 0.8, max(rad.asc + 0.17, idx.h * 0.6 + 0.4), rad.desc)
+            else:  # `root x` = 제곱근
+                b = Box(idx.w + 1.17, idx.asc + 0.17, idx.desc)
         elif t in ("left", "LEFT"):
             self.take()  # 여는 괄호
             inner = self.expr(("right", "RIGHT", "}"))
@@ -437,6 +504,33 @@ def list_equations(doc) -> List[Dict]:
                 "height": int(sz.get(sec.src, "height") or 0) if sz is not None else 0,
             })
     return out
+
+
+def _norm_script(s: str) -> str:
+    return re.sub(r"[\s`~]+", "", s)
+
+
+def find_equations(doc, text: str) -> List[int]:
+    """스크립트에 text가 든 수식 번호들 (띄어쓰기·`~` 무시). 똑같은 스크립트가 있으면 그것만."""
+    want = _norm_script(text)
+    eqs = list_equations(doc)
+    exact = [q["index"] for q in eqs if _norm_script(q["script"]) == want]
+    if exact:
+        return exact
+    return [q["index"] for q in eqs if want and want in _norm_script(q["script"])]
+
+
+def resolve_equation(doc, key: str) -> int:
+    """'3' 같은 번호 또는 스크립트 일부로 수식 하나를 고른다."""
+    from .errors import HwpxError
+    if str(key).strip().isdigit():
+        return int(key)
+    hits = find_equations(doc, str(key))
+    if not hits:
+        raise HwpxError(f"`{key}` 가 든 수식이 없습니다 (equation list 로 확인)")
+    if len(hits) > 1:
+        raise HwpxError(f"`{key}` 가 든 수식이 {len(hits)}개입니다 (번호 {hits[:10]}) — 번호로 지정하세요")
+    return hits[0]
 
 
 def replace_equation(doc, index: int, script: str, base_unit: Optional[int] = None) -> Dict:
