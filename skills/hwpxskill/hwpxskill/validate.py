@@ -136,8 +136,8 @@ def validate(doc) -> Dict:
                 seen.add(key)
         begins = {fb.get(src, "id") for fb in sec.sec.iter("fieldBegin")}
         ends = {fe.get(src, "beginIDRef") for fe in sec.sec.iter("fieldEnd")}
-        if begins - ends:
-            errors.append(f"s{si}: 짝이 없는 누름틀 시작 {sorted(x for x in begins - ends if x)[:5]}")
+        if begins - ends:  # 한글 저장본에도 종종 있다 (한글은 그대로 연다)
+            warnings.append(f"s{si}: 짝이 없는 누름틀 시작 {sorted(x for x in begins - ends if x)[:5]}")
         for p in sec.iter_paragraphs():
             pt = ParaText(src, p)
             if "{" in pt.text:

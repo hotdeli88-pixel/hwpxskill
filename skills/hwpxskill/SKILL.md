@@ -51,7 +51,7 @@ hwpx fill 양식.hwpx -d 값.json -o 결과.hwpx      # 저장 + 자동 검수
 미리 보기에서 `건너뜀`, `안 쓰인 키`, 경고를 모두 해결한 뒤 저장한다. 시험지는 `hwpx exam -d 문항.json [-t 양식.hwpx] -o 시험지.hwpx` — [references/exam.md](references/exam.md). 기존 수식 고치기는 `hwpx equation list/set`.
 
 ### 5. 검수
-`fill`·`exam`은 저장 뒤 자동으로 검수한다(따로 할 때는 `hwpx check 결과.hwpx`): 구조(ZIP·XML·스타일 참조·개수), 남은 `{{}}`·빈 누름틀, 수식 문법, 개인정보, 표기법, 그리고 PDF 렌더.
+`fill`·`exam`은 저장 뒤 자동으로 검수한다(따로 할 때는 `hwpx check 결과.hwpx --baseline 양식.hwpx`): 구조(ZIP·XML·스타일 참조·개수), 남은 `{{}}`·빈 누름틀, 수식 문법, 개인정보, 표기법, 그리고 PDF 렌더. 양식에 원래 있던 문제는 따로 세어 채운 결과의 문제만 앞에 나온다.
 - **PDF를 직접 열어 페이지를 본다** (Claude Code는 Read 도구로 PDF를 볼 수 있다). 글자 넘침, 표 깨짐, 빈 칸, 수식 모양, 쪽 넘김을 확인하고 문제가 있으면 값을 고쳐 4단계를 다시 한다.
 - 사용자에게 보고한다: 결과 파일(HWPX·PDF) 경로, 채운 항목 수, **확인이 필요한 값(`○○○` 등) 목록**, 남은 빈칸, 표기법·개인정보 경고(개인정보는 경고만 — 요청하면 `hwpx privacy redact`로 가린 사본). 자세한 기준은 [references/check.md](references/check.md).
 - Claude Code에서 문서가 길면 PDF 페이지 확인을 보조 에이전트에게 나눠 맡겨도 된다(선택).

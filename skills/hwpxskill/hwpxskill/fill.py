@@ -322,7 +322,12 @@ class _Collector:
         return out[:40]
 
     def fields(self, slots: List[FieldSlot]) -> None:
+        spans = [(f.begin_ctrl.start, f.end_ctrl.end, f.name) for f in slots]
         for f in slots:
+            if any(n == f.name and a < f.begin_ctrl.start and f.end_ctrl.end <= b for a, b, n in spans):
+                # 같은 이름 누름틀 안에 또 든 누름틀(양식 작성 실수) — 바깥 것을 채우면 함께 바뀐다
+                self.report.notes.append(f"{f.location}: '{f.name}' 누름틀이 같은 이름 누름틀 안에 겹쳐 있어 바깥 것만 채움")
+                continue
             key = self.values.lookup(f.name)
             if key is None:
                 continue

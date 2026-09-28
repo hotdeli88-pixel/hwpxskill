@@ -9,7 +9,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from . import __version__
 from .errors import HwpxError
@@ -88,7 +88,7 @@ def cmd_fill(a) -> int:
         _print_fill(rep, a.dry_run)
     if out and not a.no_check:
         print()
-        _run_check(out, render=a.render, json_out=False)
+        _run_check(out, render=a.render, json_out=False, baseline=a.file)
     strict_bad = rep["skipped"] or rep["unmatched_keys"]
     return 2 if (a.strict and strict_bad) else 0
 
@@ -184,7 +184,7 @@ def cmd_exam(a) -> int:
         print(f"저장: {out}")
     if not a.no_check:
         print()
-        _run_check(out, render=a.render, json_out=False)
+        _run_check(out, render=a.render, json_out=False, baseline=template)
     return 0
 
 
@@ -256,29 +256,75 @@ def cmd_validate(a) -> int:
     return 0 if res["ok"] else 1
 
 
-def _run_check(path: str, render: str, json_out: bool) -> Dict:
+def _split_preexisting(new: List[Any], old: List[Any], key) -> Tuple[List[Any], List[Any]]:
+    """새 결과를 (새로 생긴 것, 원본에도 있던 것)으로 나눈다 — 같은 키가 원본에 있던 개수만큼 빼 준다."""
+    from collections import Counter
+    left = Counter(key(x) for x in old)
+    fresh, pre = [], []
+    for x in new:
+        k = key(x)
+        if left[k] > 0:
+            left[k] -= 1
+            pre.append(x)
+        else:
+            fresh.append(x)
+    return fresh, pre
+
+
+def _run_check(path: str, render: str, json_out: bool, baseline: Optional[str] = None) -> Dict:
+    """검수. baseline(원본 양식)을 주면 양식에 원래 있던 문제는 따로 센다 (채운 결과의 문제만 보여 줌)."""
     from .validate import validate, format_result
     from .privacy import scan_document, format_findings
     from .lint import lint_document
     doc = _open(path)
-    res = {"file": path, "validate": validate(doc)}
+    res: Dict[str, Any] = {"file": path, "validate": validate(doc)}
     res["privacy"] = scan_document(doc)
     res["lint"] = lint_document(doc)
+    pre: Dict[str, Any] = {}
+    if baseline:
+        base = _open(baseline)
+        bv = validate(base)
+        v = res["validate"]
+        v["errors"], pre_err = _split_preexisting(v["errors"], bv["errors"], lambda m: m)
+        keep = [w for w in v["warnings"] if w.startswith("채우지 않은 자리표시")]  # 남은 자리는 늘 알린다
+        v["warnings"], pre_warn = _split_preexisting([w for w in v["warnings"] if w not in keep],
+                                                     bv["warnings"], lambda m: m)
+        v["warnings"] = keep + v["warnings"]
+        v["ok"] = not v["errors"]
+        res["privacy"], pre["privacy"] = _split_preexisting(res["privacy"], scan_document(base),
+                                                            lambda f: (f["rule"], f["match"]))
+        res["lint"], pre["lint"] = _split_preexisting(res["lint"], lint_document(base),
+                                                      lambda f: (f["rule"], f["match"]))
+        pre["validate"] = pre_err + pre_warn
+        res["preexisting"] = pre
     if render != "none":
         from .render import render_pdf
         res["render"] = render_pdf(path, engine=render)
     if json_out:
         _dump(res)
     else:
-        print("── 검수 ──")
+        print("── 검수 ──" + (" (양식에 원래 있던 문제는 따로 셈)" if baseline else ""))
         print(format_result(res["validate"]))
+        if pre.get("validate"):
+            print(f"  (양식에 원래 있던 구조 문제 {len(pre['validate'])}건 — 한글에서 열리는 원본 그대로: "
+                  f"{pre['validate'][0][:60]}{' …' if len(pre['validate']) > 1 else ''})")
         pv = [f for f in res["privacy"] if f["level"] != "info"]
         if pv:
             print(format_findings(res["privacy"]))
         else:
             print("개인정보: 경고 없음" + (f" (공개 연락처 {len(res['privacy'])}건은 허용)" if res["privacy"] else ""))
+        pre_pv = [f for f in pre.get("privacy", []) if f["level"] != "info"]
+        if pre_pv:
+            print(f"  (양식에 원래 있던 개인정보 {len(pre_pv)}건 — 공유 전 확인)")
         errs = [f for f in res["lint"] if f["severity"] == "error"]
-        print(f"표기법: 오류 {len(errs)}건, 경고 {len(res['lint']) - len(errs)}건" + (" (자세히: lint 명령)" if res["lint"] else ""))
+        head = "표기법(채운 내용)" if baseline else "표기법"
+        print(f"{head}: 오류 {len(errs)}건, 경고 {len(res['lint']) - len(errs)}건")
+        for f in res["lint"][:10] if baseline else []:
+            print(f"  [{'오류' if f['severity'] == 'error' else '경고'}] {f['location']} {f['rule']} “{f['match']}” — {f['message']}")
+        if pre.get("lint"):
+            print(f"  (양식 원문에 있던 표기 {len(pre['lint'])}건은 제외 — 전체는 lint 명령)")
+        elif res["lint"] and not baseline:
+            print("  (자세히: lint 명령)")
         if "render" in res:
             r = res["render"]
             if r.get("ok"):
@@ -289,7 +335,7 @@ def _run_check(path: str, render: str, json_out: bool) -> Dict:
 
 
 def cmd_check(a) -> int:
-    res = _run_check(a.file, render=a.render, json_out=a.json)
+    res = _run_check(a.file, render=a.render, json_out=a.json, baseline=a.baseline)
     return 0 if res["validate"]["ok"] else 1
 
 
@@ -419,6 +465,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("check", help="검수: 구조 + 개인정보 + 표기법 + PDF 렌더")
     s.add_argument("file")
+    s.add_argument("--baseline", help="원본 양식 — 주면 양식에 원래 있던 문제는 따로 센다")
     s.add_argument("--render", default="auto", choices=["auto", "hancom", "rhwp", "none"])
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_check)

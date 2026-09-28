@@ -142,3 +142,38 @@ def test_inline_labels_keep_checkboxes_and_suffixes():
     for want in ("성별: □남 ☑여", "참석 여부 : ☑참석 □불참", "신청인: 홍길동   (서명)", "금액: 1,000원",
                  "성명: 김철수  연락처: 02-123-4567"):
         assert want in text, want
+
+
+def _field(fid, name, inner):
+    return (f'<hp:ctrl><hp:fieldBegin id="{fid}" type="CLICK_HERE" name="{name}" editable="1">'
+            f'<hp:parameters cnt="1" name=""><hp:stringParam name="Command">Clickhere:set:10:Direction:wstring:3:안내 '
+            f'HelpState:wstring:0: </hp:stringParam></hp:parameters></hp:fieldBegin></hp:ctrl>{inner}'
+            f'<hp:ctrl><hp:fieldEnd beginIDRef="{fid}" fieldid="0"/></hp:ctrl>')
+
+
+def test_nested_same_name_fields_fill_outer_only():
+    from hwpxskill.skeleton import new_document
+    inner = _field(11, "근거", '<hp:t>안쪽 예시</hp:t>')
+    body = ('<hp:p id="0" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">'
+            f'<hp:run charPrIDRef="0">{_field(10, "근거", "<hp:t> - </hp:t>" + inner + "<hp:t>  </hp:t>")}</hp:run></hp:p>')
+    doc = new_document(body)
+    rep = fill_document(doc, {"values": {"근거": "새 근거"}}).to_dict()
+    assert rep["summary"]["filled"] == 1 and rep["summary"]["skipped"] == 0
+    assert any("겹쳐" in n for n in rep["notes"])
+    d2 = reopen(doc)
+    assert "새 근거" in outline(d2) and "안쪽 예시" not in outline(d2)
+    assert validate(d2)["ok"]
+
+
+def test_fill_check_separates_preexisting_problems(tmp_path):
+    from hwpxskill.cli import _run_check
+    src = tmp_path / "양식.hwpx"
+    doc = form_doc()
+    fill_document(doc, {"values": {"작성일": "2026.9.28"}})  # 양식에 원래 있던 표기 오류로 둔다
+    doc.save(str(src))
+    out = HwpxDocument.open(str(src))
+    fill_document(out, {"values": {"신청인": "오후 2시"}})  # 채운 내용의 표기 오류
+    out_path = out.save(str(tmp_path / "완성.hwpx"))
+    res = _run_check(out_path, render="none", json_out=False, baseline=str(src))
+    assert {f["rule"] for f in res["lint"]} == {"TIME_AMPM"}
+    assert {f["rule"] for f in res["preexisting"]["lint"]} >= {"DATE_NO_SPACE"}
