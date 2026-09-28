@@ -251,7 +251,7 @@ def cmd_validate(a) -> int:
 def _run_check(path: str, render: str, json_out: bool) -> Dict:
     from .validate import validate, format_result
     from .privacy import scan_document, format_findings
-    from .lint import lint_document, format_findings as lint_fmt
+    from .lint import lint_document
     doc = _open(path)
     res = {"file": path, "validate": validate(doc)}
     res["privacy"] = scan_document(doc)
@@ -441,6 +441,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     except HwpxError as e:
         print(f"오류: {e}", file=sys.stderr)
         return 1
+    except BrokenPipeError:  # `| head` 등으로 출력이 끊긴 경우
+        try:
+            sys.stdout = open(os.devnull, "w")
+        except OSError:
+            pass
+        return 0
     except FileNotFoundError as e:
         print(f"오류: 파일을 찾을 수 없습니다 — {e.filename}", file=sys.stderr)
         return 1

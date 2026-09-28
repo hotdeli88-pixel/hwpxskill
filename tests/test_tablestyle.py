@@ -41,7 +41,6 @@ def test_apply_cross_document_by_role():
 def test_apply_same_document_reuses_ids():
     doc = styled_source()
     before = len(doc.header.ids("charPr"))
-    from hwpxskill.skeleton import table
     apply_table_style(doc, ["s0.t0"], "s0.t0")
     assert len(doc.header.ids("charPr")) == before
     assert validate(reopen(doc))["ok"]

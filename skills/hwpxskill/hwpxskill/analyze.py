@@ -53,8 +53,7 @@ def analyze(doc, outline: bool = False, max_outline: int = 400) -> Dict:
         src = sec.src
         for f in scan.fields:
             fields.append({"name": f.name, "location": f.location, "guide": f.guide, "current": f.current,
-                           "multi_paragraph": f.p_begin is not f.p_end,
-                           "context": ParaText(src, f.p_begin).text[:60]})
+                           "multi_paragraph": f.p_begin is not f.p_end, "before": f.before, "after": f.after})
         for ph in scan.placeholders:
             placeholders.append({"key": ph.key, "token": ph.token, "location": ph.location,
                                  "whole_paragraph": ph.whole_paragraph, "context": ph.context})
@@ -131,7 +130,10 @@ def format_text(report: Dict) -> str:
         L.append("\n[누름틀]")
         for f in report["fields"]:
             cur = f" (현재: {f['current'][:30]})" if f["current"] else ""
-            L.append(f"  {f['name']} @ {f['location']} — 안내: {f['guide']}{cur}")
+            ctx = ""
+            if f["before"].strip() or f["after"].strip():
+                ctx = f"  ⟨{f['before'].strip()[-12:]} ▢ {f['after'].strip()[:16]}⟩"
+            L.append(f"  {f['name']} @ {f['location']} — 안내: {f['guide']}{cur}{ctx}")
     if report["placeholders"]:
         L.append("\n[자리표시]")
         for p in report["placeholders"]:

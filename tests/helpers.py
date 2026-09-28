@@ -61,7 +61,6 @@ def styled_source():
     center = hs.derive_parapr(0, align="CENTER", line_spacing=130)
     sp = []
     for c in t.cells(src):
-        n_rows, n_cols = 4, 4
         top = ("SOLID", "0.4 mm") if c.row == 0 else ("DOUBLE_SLIM", "0.5 mm") if c.row == 1 else ("SOLID", "0.4 mm") if c.row == 3 else ("DOT", "0.12 mm")
         bottom = ("SOLID", "0.4 mm") if c.row == 3 else ("DOUBLE_SLIM", "0.5 mm") if c.row == 0 else ("SOLID", "0.4 mm") if c.row == 2 else ("DOT", "0.12 mm")
         left = ("SOLID", "0.4 mm") if c.col == 0 else ("SOLID", "0.25 mm") if c.col == 1 else ("SOLID", "0.12 mm")

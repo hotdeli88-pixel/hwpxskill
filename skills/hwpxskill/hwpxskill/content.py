@@ -9,6 +9,7 @@
 2. 같은 표의 다른 셀에 있는 예시 문단.
 3. 예시가 없으면 첫 문단 서식을 그대로 쓰고, 단계마다 들여쓰기·내어쓰기를 더한 문단 모양을
    만든다. 부호 뒤에 자동 탭(내어쓰기 위치)을 두어 둘째 줄이 부호 뒤 글자에 맞춰진다.
+   (한컴 내어쓰기 규칙: 첫 줄은 왼쪽 여백 left, 둘째 줄부터 left+|intent|)
 """
 from __future__ import annotations
 
@@ -230,7 +231,8 @@ class StyleBook:
         em = self._em()
         marker_w = int(_text_width_em(line.marker) * em)
         hang = marker_w + em // 2
-        left = self._base_margin_left() + line.level * em + hang
+        # 한컴 내어쓰기: 첫 줄은 left, 둘째 줄부터 left+|intent| (부호 뒤 자동 탭도 그 위치에 선다)
+        left = self._base_margin_left() + line.level * em
         if self._auto_tab is None:
             self._auto_tab = self.header.ensure_auto_tab()
         parapr = self.header.derive_parapr(self.base_parapr, left=left, intent=-hang, tab_pr=self._auto_tab,
@@ -245,7 +247,7 @@ class StyleBook:
         if key in self._derived:
             return self._derived[key]
         em = self._em()
-        left = self._base_margin_left() + level * em + int(1.5 * em)
+        left = self._base_margin_left() + level * em + int(1.5 * em)  # 앞 항목의 글자 시작 위치 근사
         parapr = self.header.derive_parapr(self.base_parapr, left=left, intent=0, no_heading=True)
         proto = Proto(self.base_tag, parapr, self.base_cp, self.base_cp, source="derived")
         self._derived[key] = proto

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from .core import xmlspan
-from .core.model import Cell, Section, Table, where_label
+from .core.model import Cell, Section, Table
 from .core.text import ParaText
 
 LABEL_KEYWORDS = {
@@ -112,6 +112,8 @@ class FieldSlot:
     current: str
     location: str
     kind: str = "CLICK_HERE"
+    before: str = ""
+    after: str = ""
 
     @property
     def a(self) -> int:
@@ -242,8 +244,11 @@ def scan_fields(sec: Section) -> List[FieldSlot]:
         i0, i1 = siblings.index(pb), siblings.index(pe)
         paras = siblings[i0:i1 + 1] if i1 >= i0 else [pb]
         name = fb.get(src, "name") or ""
+        before = "".join(sg.text for sg in ParaText(src, pb).segs if sg.re <= bc.start)
+        after = "".join(sg.text for sg in ParaText(src, pe).segs if sg.rs >= ec.end)
         out.append(FieldSlot(name, sec.index, fb, bc, ec, pb, pe, _cmd_guide(src, fb),
-                             region_text(src, paras, bc.end, ec.start), sec.paragraph_address(pb), typ))
+                             region_text(src, paras, bc.end, ec.start), sec.paragraph_address(pb), typ,
+                             before[-30:], after[:30]))
     return out
 
 
